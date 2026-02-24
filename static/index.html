@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="LLDProwl — real-time LLDP discovery, cable tracing, and detection history" />
+  <title>LLDProwl</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-brand">
+        <h1 class="title">LLDProwl</h1>
+        <p class="header-tagline">REAL-TIME MONITORING • CSV HISTORY • LIVE UPDATES</p>
+      </div>
+    </header>
+
+    <div class="port-cards-wrap">
+      <div class="port-cards-row">
+        <section id="local-interface-card" class="card card-half">
+          <div class="local-interface-header">
+            <h2 class="card-title">Local Interface</h2>
+            <div class="local-interface-top-row">
+              <select id="interface-select" class="select"></select>
+              <span id="link-state" class="link-state">—</span>
+            </div>
+          </div>
+          <div id="local-port-fields" class="port-fields"></div>
+          <div class="local-ping-section">
+            <label for="ping-ips" class="local-ping-label">Ping IPs</label>
+            <input type="text" id="ping-ips" class="input input-ping" placeholder="e.g. 192.168.1.1, 8.8.8.8, 10.0.0.1" />
+            <button type="button" id="ping-save-btn" class="btn btn-small">Save</button>
+            <button type="button" id="ping-now-btn" class="btn btn-small btn-primary">Ping Now</button>
+            <div id="local-ping-results" class="local-ping-results" aria-live="polite"></div>
+          </div>
+        </section>
+        <section id="connected-switch-card" class="card card-half">
+          <div class="connected-switch-header">
+            <h2 class="card-title">Connected Switch</h2>
+            <button type="button" id="connected-start-sniff-btn" class="btn btn-card-green">Start Sniff</button>
+          </div>
+          <div id="current-port-fields" class="port-fields"></div>
+          <div class="connected-notes-inline">
+            <div class="notes-inline-header">
+              <span class="notes-inline-label">Note</span>
+              <button type="button" id="save-note-btn" class="btn btn-green">Save</button>
+            </div>
+            <textarea id="port-notes" class="notes-input notes-input-inline" rows="3" placeholder="Add note for this port..."></textarea>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <section class="card log-section">
+      <div class="log-section-header">
+        <h2 class="card-title">Detection History</h2>
+        <div class="log-actions">
+          <button type="button" id="log-download-btn" class="btn btn-log btn-download">Download Log</button>
+          <button type="button" id="log-purge-btn" class="btn btn-log btn-delete">Delete Log</button>
+        </div>
+      </div>
+      <div class="log-toolbar">
+        <button type="button" id="log-prev-btn" class="btn btn-small">Prev</button>
+        <span id="log-page-info" class="page-info">Page 1</span>
+        <button type="button" id="log-next-btn" class="btn btn-small">Next</button>
+      </div>
+      <div class="log-container">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>System Name</th>
+              <th>Management Address</th>
+              <th>Port ID</th>
+              <th>Port Description</th>
+              <th>Notes</th>
+              <th class="log-actions-col"></th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div id="delete-log-modal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" id="delete-log-backdrop"></div>
+    <div class="modal-dialog" role="dialog" aria-labelledby="delete-log-title" aria-modal="true">
+      <h3 id="delete-log-title" class="modal-title">Delete detection history?</h3>
+      <p class="modal-message">Clear all detection history entries? This cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" id="delete-log-cancel-btn" class="btn btn-modal-cancel">Cancel</button>
+        <button type="button" id="delete-log-confirm-btn" class="btn btn-modal-delete">Delete Log</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-entry-modal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" id="delete-entry-backdrop"></div>
+    <div class="modal-dialog" role="dialog" aria-labelledby="delete-entry-title" aria-modal="true">
+      <h3 id="delete-entry-title" class="modal-title">Delete this entry?</h3>
+      <p class="modal-message">Remove this detection history entry? This cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" id="delete-entry-cancel-btn" class="btn btn-modal-cancel">Cancel</button>
+        <button type="button" id="delete-entry-confirm-btn" class="btn btn-modal-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=3"></script>
+</body>
+</html>
