@@ -1,70 +1,127 @@
 # LLDProwl
 
-Gather network switch information for the connected port and log detection history.
+LLDProwl is a small FastAPI web app that captures LLDP and Cisco Discovery
+Protocol (CDP) frames from a selected network interface, displays the connected
+switch and port, runs optional ping checks, and stores snapshots in CSV format.
 
-## Description
+It is intended to run on Linux (including Raspberry Pi OS), macOS, and Windows.
+Packet capture requires elevated capture privileges and a libpcap-compatible
+driver.
 
-LLDProwl is a web app that captures LLDP frames on a selected network interface and displays the connected switch and port details (chassis ID, system name, port ID/description, VLAN, management address, capabilities). It uses Scapy to sniff LLDP traffic. You can add notes, run ping tests against configurable IPs, and save snapshots to a CSV log. Detection history is paged in the UI with options to download the log, delete individual entries, or purge the log. The UI is a single-page app with a dark, Fluke-style theme. Cross-platform: Linux, macOS, Windows.
+## Local setup
 
-## Prerequisites
+Requirements:
 
-- **Python 3.9+**
-- **Packet capture**: Npcap (Windows) or libpcap (Linux/macOS) so Scapy can capture on interfaces. Wireshark installs the drivers needed; if Wireshark is already installed, no further action is required for capture support.
+- Python 3.10 or newer
+- Linux: `libpcap` and `iputils-ping`
+- macOS: libpcap is included; Wireshark's ChmodBPF component is the preferred
+  way to grant non-root capture access
+- Windows: Npcap in WinPcap-compatible mode
 
-## Usage
-
-1. **Install the required Python modules**
-
-   ```bash
-   git clone <repo-url>
-   cd LLDProwl
-   python3 -m venv venv
-   source venv/bin/activate   # Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-2. **Run the app**
-
-   ```bash
-   python main.py
-   ```
-
-   Or with uvicorn:
-
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
-
-   Open **http://localhost:8000** in a browser.
-
-3. **In the UI**
-
-   - Choose the **interface** from the dropdown (Local Interface card).
-   - Optionally set **Ping IPs** (comma-separated), click Save, then **Ping Now**.
-   - Click **Start Sniff** on the Connected Switch card to capture LLDP. Switch/port details and optional notes appear there; click **Save** to append a snapshot to Detection History.
-   - Use **Detection History** to view, download (CSV), delete rows, or purge the log.
-
-**Note:** On Linux, raw packet capture usually requires either running as root (`sudo python main.py`) or setting capabilities on the Python binary:
+Create an environment and install the Python packages:
 
 ```bash
-sudo setcap cap_net_raw,cap_net_admin=eip $(readlink -f $(which python3))
+git clone <repo-url>
+cd lldprowl
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python main.py
 ```
 
-## Configuration
+On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1` instead of
+the `source` command.
 
-- **`data/config.json`** (created on first run): `interface` (e.g. `eth0`, `en0`), `ping_targets` (list of IPs/hostnames, max 50).
-- **`data/detection_history.csv`**: Snapshot log (timestamp, system name, management address, port ID, port description, VLAN, switch MAC, chassis, caps, local IP, ping results, notes).
+Open <http://127.0.0.1:8001>. On first load, LLDProwl selects the first
+connected non-loopback interface. You can choose another interface in the UI.
 
-## Systemd (e.g. Raspberry Pi)
+The web app works without capture privileges, but starting an LLDP/CDP sniff
+does not. Prefer Wireshark's ChmodBPF component on macOS and the capability-
+limited systemd unit on Linux. If you temporarily run the local process with
+`sudo`, restore ownership of `data/` before returning to a normal user account;
+otherwise History saves can fail.
+
+Runtime settings are controlled with environment variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `LLDPROWL_HOST` | `127.0.0.1` | Address used by `python main.py` |
+| `LLDPROWL_PORT` | `8001` | HTTP port used by `python main.py` |
+| `LLDPROWL_DATA_DIR` | `./data` | Writable config and CSV directory |
+
+For LAN access during a local run:
 
 ```bash
-sudo cp systemd/lldprowl.service /etc/systemd/system/
-# Edit User=, WorkingDirectory=, ExecStart= to match your install
+LLDPROWL_HOST=0.0.0.0 python main.py
+```
+
+Binding to `0.0.0.0` exposes the app's unauthenticated configuration and log
+endpoints to the network. Use it only on a trusted LAN or place it behind an
+authenticated reverse proxy.
+
+## Raspberry Pi OS installation
+
+These instructions work on current 32-bit and 64-bit Raspberry Pi OS releases.
+They install the code read-only under `/opt` and keep mutable state under
+`/var/lib/lldprowl`.
+
+```bash
+sudo apt update
+sudo apt install -y git python3-venv libpcap-dev iputils-ping
+sudo useradd --system --home-dir /opt/lldprowl --shell /usr/sbin/nologin lldprowl
+sudo git clone <repo-url> /opt/lldprowl
+sudo python3 -m venv /opt/lldprowl/.venv
+sudo /opt/lldprowl/.venv/bin/python -m pip install -r /opt/lldprowl/requirements.txt
+sudo cp /opt/lldprowl/systemd/lldprowl.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable lldprowl
-sudo systemctl start lldprowl
+sudo systemctl enable --now lldprowl
 ```
 
-## About
+The included unit grants only `CAP_NET_RAW` and `CAP_NET_ADMIN` to the service;
+it does not run the web app as root. It also creates and owns
+`/var/lib/lldprowl` automatically. LLDProwl must use exactly one Uvicorn worker
+because capture and live discovery state are process-local. The included unit
+sets `--workers 1` explicitly.
 
-Utility to get network switch information and check connectivity via LLDP and ping, with CSV detection history and a web UI.
+Verify the service:
+
+```bash
+systemctl status lldprowl
+curl http://127.0.0.1:8001/api/health
+journalctl -u lldprowl -n 50 --no-pager
+```
+
+From another device, open `http://<pi-address>:8001`. If a firewall is enabled,
+allow TCP port 8001 only from the trusted management network.
+
+To update an existing installation:
+
+```bash
+sudo git -C /opt/lldprowl pull --ff-only
+sudo /opt/lldprowl/.venv/bin/python -m pip install -r /opt/lldprowl/requirements.txt
+sudo systemctl restart lldprowl
+```
+
+## Data
+
+- `config.json`: selected interface and up to 50 ping targets
+- `detection_history.csv`: saved switch/port snapshots
+
+Local runs store these files in `data/`. The systemd service stores them in
+`/var/lib/lldprowl`, so code updates do not overwrite runtime data.
+
+Detection History can be searched across all saved fields and filtered by
+protocol, ping outcome, and date range. Older CSV files are upgraded
+automatically on the next save; existing rows are identified as LLDP. Parsed
+rows are cached until the CSV changes, keeping repeated History refreshes cheap
+while retaining a directly downloadable CSV.
+
+## Development checks
+
+```bash
+python -m unittest discover -s tests -v
+python -m compileall -q .
+```
+
+Live discovery can only be fully verified on a host connected to a switch port
+with LLDP or CDP enabled.

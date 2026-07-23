@@ -4,9 +4,23 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 SYS_NET = Path("/sys/class/net")
+_DETAILS_CACHE_TTL_SECONDS = 2.0
+_details_cache: dict[str, tuple[float, dict]] = {}
+_details_cache_lock = threading.Lock()
+
+
+def clear_interface_details_cache(interface: str = "") -> None:
+    """Invalidate cached platform command results after a configuration change."""
+    with _details_cache_lock:
+        if interface:
+            _details_cache.pop(interface, None)
+        else:
+            _details_cache.clear()
 
 
 def _is_linux():
@@ -425,7 +439,8 @@ def _read_sysfs(interface: str, filename: str, default: str = "") -> str:
     if not path.exists():
         return default
     try:
-        return open(path, "r").read().strip()
+        with open(path, "r") as handle:
+            return handle.read().strip()
     except (IOError, OSError):
         return default
 
@@ -637,7 +652,7 @@ Write-Output "LINKSPEED:$($adapter.LinkSpeed)"
             elif line.startswith("LINKSPEED:"):
                 result["speed"] = line[10:].strip()
         # Broadcast: not commonly exposed in PowerShell; leave empty or compute from ip+prefix
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError, Exception):
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError, ValueError):
         pass
     return result
 
@@ -658,6 +673,11 @@ def get_interface_details(interface: str) -> dict:
             "speed": "—", "duplex": "—", "ipv4": "—", "mtu": "—", "netmask": "—", "broadcast": "—",
             "network_address": "—", "default_gateway": "—",
         }
+    now = time.monotonic()
+    with _details_cache_lock:
+        cached = _details_cache.get(interface)
+        if cached and now - cached[0] <= _DETAILS_CACHE_TTL_SECONDS:
+            return cached[1].copy()
     connected = is_connected(interface)
     operstate = get_operstate(interface)
     mac = ""
@@ -727,7 +747,7 @@ def get_interface_details(interface: str) -> dict:
     network_address = _network_address(ipv4, netmask) if (ipv4 and netmask) else ""
     default_gateway = _get_default_gateway_for_interface(interface)
 
-    return {
+    result = {
         "name": interface,
         "mac": mac or "—",
         "connected": connected,
@@ -741,3 +761,6 @@ def get_interface_details(interface: str) -> dict:
         "network_address": network_address or "—",
         "default_gateway": default_gateway or "—",
     }
+    with _details_cache_lock:
+        _details_cache[interface] = (time.monotonic(), result.copy())
+    return result

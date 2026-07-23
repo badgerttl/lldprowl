@@ -3,19 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="LLDProwl — real-time LLDP discovery, cable tracing, and detection history" />
+  <meta name="description" content="LLDProwl — real-time LLDP and CDP discovery, cable tracing, and detection history" />
   <title>LLDProwl</title>
-  <link rel="stylesheet" href="/static/styles.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css?v=13" />
 </head>
 <body>
   <div class="app">
     <header class="header">
       <div class="header-brand">
         <h1 class="title">LLDProwl</h1>
-        <p class="header-tagline">REAL-TIME MONITORING • CSV HISTORY • LIVE UPDATES</p>
+        <p class="header-tagline">LLDP + CDP • CSV HISTORY • LIVE UPDATES</p>
       </div>
     </header>
 
@@ -59,9 +56,41 @@
       <div class="log-section-header">
         <h2 class="card-title">Detection History</h2>
         <div class="log-actions">
+          <button type="button" id="log-filters-toggle" class="btn btn-log" aria-controls="log-filters" aria-expanded="false">Show Filters</button>
           <button type="button" id="log-download-btn" class="btn btn-log btn-download">Download Log</button>
           <button type="button" id="log-purge-btn" class="btn btn-log btn-delete">Delete Log</button>
         </div>
+      </div>
+      <div id="log-filters" class="log-filters" role="search" aria-label="Detection history filters" hidden>
+        <label class="filter-field filter-search">
+          <span>Search</span>
+          <input type="search" id="log-search" class="input" placeholder="Switch, port, IP, VLAN, note…" />
+        </label>
+        <label class="filter-field">
+          <span>Protocol</span>
+          <select id="log-protocol-filter" class="select">
+            <option value="">All</option>
+            <option value="LLDP">LLDP</option>
+            <option value="CDP">CDP</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Ping</span>
+          <select id="log-ping-filter" class="select">
+            <option value="">Any</option>
+            <option value="pass">Has pass</option>
+            <option value="fail">Has failure</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>From</span>
+          <input type="date" id="log-date-from" class="input" />
+        </label>
+        <label class="filter-field">
+          <span>To</span>
+          <input type="date" id="log-date-to" class="input" />
+        </label>
+        <button type="button" id="log-clear-filters" class="btn btn-small filter-clear">Clear</button>
       </div>
       <div class="log-toolbar">
         <button type="button" id="log-prev-btn" class="btn btn-small">Prev</button>
@@ -73,12 +102,12 @@
           <thead>
             <tr>
               <th>Time</th>
-              <th>System Name</th>
-              <th>Management Address</th>
-              <th>Port ID</th>
-              <th>Port Description</th>
-              <th>Notes</th>
-              <th class="log-actions-col"></th>
+              <th>Protocol</th>
+              <th>Switch</th>
+              <th>Port</th>
+              <th>VLAN</th>
+              <th>Ping</th>
+              <th class="log-actions-col">Actions</th>
             </tr>
           </thead>
           <tbody id="log-tbody"></tbody>
@@ -111,6 +140,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=3"></script>
+  <script src="/static/app.js?v=18"></script>
 </body>
 </html>

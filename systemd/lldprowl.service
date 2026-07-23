@@ -1,19 +1,27 @@
 [Unit]
 Description=LLDProwl LLDP Tester Web App
-After=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-WorkingDirectory=/home/pi/LLDProwl
-ExecStart=/home/pi/LLDProwl/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
+User=lldprowl
+Group=lldprowl
+WorkingDirectory=/opt/lldprowl
+Environment=LLDPROWL_DATA_DIR=/var/lib/lldprowl
+ExecStart=/opt/lldprowl/.venv/bin/python -m uvicorn main:app --workers 1 --host 0.0.0.0 --port 8001
 Restart=on-failure
 RestartSec=5
-
-# If not using capabilities on Python, use root for raw capture:
-# User=root
-# ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+StateDirectory=lldprowl
+StateDirectoryMode=0750
+UMask=0027
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictSUIDSGID=true
 
 [Install]
 WantedBy=multi-user.target

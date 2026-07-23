@@ -9,6 +9,15 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 build/
 develop-eggs/
 dist/
@@ -25,9 +34,19 @@ wheels/
 .installed.cfg
 *.egg
 
-# Data (optional: uncomment to ignore local data in git)
-# data/config.json
-# data/detection_history.csv
+# Runtime data
+/data/*
+!/data/.gitkeep
+*.pid
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Packet captures
+*.pcap
+*.pcapng
 
 # IDE / editor
 .idea/
